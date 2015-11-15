@@ -25,9 +25,9 @@ unsigned int to_host(unsigned char *p)
     return (p[0] << 24) + (p[1] << 16) + (p[2] << 8) + p[3];
 };
 
-void parseFile(FILE *fp)
+void parse_file(FILE *fp, found_atom_callback_t *callback)
 {
-		int x = 0;
+	int x = 0;
 	char buf;
 	char cursor[4];
 
@@ -48,10 +48,10 @@ void parseFile(FILE *fp)
             unsigned char q[4];
 			fread(&q, sizeof(char), 4, fp);
 			int length = to_host(q);
-
 			fseek(fp, startPos+8, SEEK_SET);
 
-			printf("%s - pos: %d - lngth: %d\n", atomPtr, startPos, length);
+			callback(atomPtr, startPos, length);
+			// printf("%s - pos: %d - lngth: %d\n", atomPtr, startPos, length);
 		}
 
 	}
