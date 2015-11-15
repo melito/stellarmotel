@@ -53,8 +53,7 @@ int main(int argc, char **argv)
 
 			fseek(fp, startPos+8, SEEK_SET);
 
-
-			printf(" %s - pos: %d - lngth: %d\n", atomPtr, startPos, length);
+			printf("%s - pos: %d - lngth: %d\n", atomPtr, startPos, length);
 		}
 
 	}
