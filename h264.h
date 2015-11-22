@@ -9,14 +9,11 @@ int chunkIsAtom(char *x);
 /* Bit twiddling */
 unsigned int to_host(unsigned char *p);
 
-/* Parse an MP4 file */
-
+/* Callback fired when parsing a file */
 typedef void (found_atom_callback_t) (char *type, unsigned int post, unsigned int length);
 
+/* Parse an MP4 file */
 void parse_file(FILE *fp, found_atom_callback_t *callback);
-
-void foundAtomCallback();
-
 
 
 /* Tree structure for mapping out an MP4 container */

@@ -51,7 +51,6 @@ void parse_file(FILE *fp, found_atom_callback_t *callback)
 			fseek(fp, startPos+8, SEEK_SET);
 
 			callback(atomPtr, startPos, length);
-			// printf("%s - pos: %d - lngth: %d\n", atomPtr, startPos, length);
 		}
 
 	}

@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <string.h>
 
+char *lastAtom;
+
 void printHelpMessage() 
 {
 	printf("\n\n== MP4 Atom Parser\n");
@@ -11,6 +13,10 @@ void printHelpMessage()
 }
 
 void found_atom(char *type, unsigned int pos, unsigned int length){
+	if (lastAtom && strcmp(lastAtom, "ftyp") == 0) {
+		return;
+	}
+	lastAtom = type;
 	printf("%s - pos: %d - lngth: %d\n", type, pos, length);
 }
 
@@ -21,7 +27,6 @@ int main(int argc, char **argv)
 		printHelpMessage();
 		return -1;
 	}
-
 
 	FILE *fp;
 	fp = fopen(argv[1], "r");
