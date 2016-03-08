@@ -36,6 +36,26 @@ int is_child(MP4Atom_t *a, MP4Atom_t *b) {
   return 0;
 }
 
+MP4Atom_t *atom read_atom_from(char *atomPtr, FILE *fp) {
+  MP4Atom_t *atom;
+  atom = (MP4Atom_t *)malloc(sizeof(MP4Atom_t));
+
+  atomPtr[4] = 0;
+  int startPos = x - 8; // 4 bytes for identifier and 4 bytes for length
+  fseek(fp, startPos, SEEK_SET);
+
+  unsigned char q[4];
+  fread(&q, sizeof(char), 4, fp);
+  int length = to_host(q);
+  fseek(fp, startPos + 8, SEEK_SET);
+
+  strcpy(atom->type, atomPtr);
+  atom->position = startPos;
+  atom->length = length;
+
+  return atom;
+}
+
 void parse_file(FILE *fp, found_atom_callback_t *callback) {
 
   MP4Container_t *container;
@@ -58,21 +78,6 @@ void parse_file(FILE *fp, found_atom_callback_t *callback) {
     if (chunkIsAtom(atomPtr)) {
 
       if (prevAtom) {
-        MP4Atom_t *atom;
-        atom = (MP4Atom_t *)malloc(sizeof(MP4Atom_t));
-
-        atomPtr[4] = 0;
-        int startPos = x - 8; // 4 bytes for identifier and 4 bytes for length
-        fseek(fp, startPos, SEEK_SET);
-
-        unsigned char q[4];
-        fread(&q, sizeof(char), 4, fp);
-        int length = to_host(q);
-        fseek(fp, startPos + 8, SEEK_SET);
-
-        strcpy(atom->type, atomPtr);
-        atom->position = startPos;
-        atom->length = length;
 
         int child = 0;
         child = is_child(prevAtom, atom);
