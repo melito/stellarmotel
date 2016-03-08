@@ -3,57 +3,89 @@
 #include <stdio.h>
 #include <string.h>
 
-const char *atomTypes[42] = {"ftyp", "wide", "free", "mdat", "moov", "moof", "mvhd",
-                             "trak", "tkhd", "edts", "elst", "mdia", "mdhd", "hdlr",
-                             "minf", "vmhd", "dinf", "dref", "url ", "stbl", "stsd",
-                             "avc1", "avcC", "colr", "stts", "ctts", "stss", "sdtp",
-                             "stsc", "stsz", "stco", "mvex", "trex", "mfhd", "traf",
-                             "tfhd", "trun", "utda", "meta", "ilst", "data", "©too"};
+#if !defined(ARRAY_SIZE)
+#define ARRAY_SIZE(x) (sizeof((x)) / sizeof((x)[0]))
+#endif
+
+const char *atomTypes[42] = {
+    "ftyp", "wide", "free", "mdat", "moov", "moof", "mvhd", "trak", "tkhd",
+    "edts", "elst", "mdia", "mdhd", "hdlr", "minf", "vmhd", "dinf", "dref",
+    "url ", "stbl", "stsd", "avc1", "avcC", "colr", "stts", "ctts", "stss",
+    "sdtp", "stsc", "stsz", "stco", "mvex", "trex", "mfhd", "traf", "tfhd",
+    "trun", "utda", "meta", "ilst", "data", "©too"};
 
 int chunkIsAtom(char *x) {
-	for (int i = 0; i < sizeof(atomTypes)/sizeof(atomTypes[0]); i++)
-	{
-		if (strncmp(atomTypes[i], x, 4) == 0) {
-			return 1;
-		}
-	}
-	return 0;
+  for (int i = 0; i < sizeof(atomTypes) / sizeof(atomTypes[0]); i++) {
+    if (strncmp(atomTypes[i], x, 4) == 0) {
+      return 1;
+    }
+  }
+  return 0;
 }
 
-unsigned int to_host(unsigned char *p)
-{
-    return (p[0] << 24) + (p[1] << 16) + (p[2] << 8) + p[3];
+unsigned int to_host(unsigned char *p) {
+  return (p[0] << 24) + (p[1] << 16) + (p[2] << 8) + p[3];
 };
 
-void parse_file(FILE *fp, found_atom_callback_t *callback)
-{
-	int x = 0;
-	char buf;
-	char cursor[4];
+int is_child(MP4Atom_t *a, MP4Atom_t *b) {
+  if (b->position < a->position + a->length) {
+    if (b->position > a->position) {
+      return 1;
+    }
+  }
+  return 0;
+}
 
-	while(fread(&buf, sizeof(char), 1, fp) > 0) {
-		x++;
+void parse_file(FILE *fp, found_atom_callback_t *callback) {
 
-		cursor[0] = cursor[1];
-		cursor[1] = cursor[2];
-		cursor[2] = cursor[3];
-		cursor[3] = buf;
+  MP4Container_t *container;
+  container = (MP4Container_t *)malloc(sizeof(MP4Container_t));
 
-		char *atomPtr = cursor;
-		if (chunkIsAtom(atomPtr)){
-			atomPtr[4]=0;
-			int startPos = x - 8; // 4 bytes for identifier and 4 bytes for length
-			fseek(fp, startPos, SEEK_SET);
+  int x = 0;
+  char buf;
+  char cursor[4];
 
-            unsigned char q[4];
-			fread(&q, sizeof(char), 4, fp);
-			int length = to_host(q);
-			fseek(fp, startPos+8, SEEK_SET);
+  MP4Atom_t *prevAtom;
+  while (fread(&buf, sizeof(char), 1, fp) > 0) {
+    x++;
 
-			callback(atomPtr, startPos, length);
-		}
+    cursor[0] = cursor[1];
+    cursor[1] = cursor[2];
+    cursor[2] = cursor[3];
+    cursor[3] = buf;
 
-	}
-	fclose(fp);
+    char *atomPtr = cursor;
+    if (chunkIsAtom(atomPtr)) {
 
+      if (prevAtom) {
+        MP4Atom_t *atom;
+        atom = (MP4Atom_t *)malloc(sizeof(MP4Atom_t));
+
+        atomPtr[4] = 0;
+        int startPos = x - 8; // 4 bytes for identifier and 4 bytes for length
+        fseek(fp, startPos, SEEK_SET);
+
+        unsigned char q[4];
+        fread(&q, sizeof(char), 4, fp);
+        int length = to_host(q);
+        fseek(fp, startPos + 8, SEEK_SET);
+
+        strcpy(atom->type, atomPtr);
+        atom->position = startPos;
+        atom->length = length;
+
+        int child = 0;
+        child = is_child(prevAtom, atom);
+
+        if (strncmp("ftyp", prevAtom->type, 4) != 0) {
+          printf("Atom %s @ %d of size: %d, ends @ %d\n", atom->type,
+                 atom->position, atom->length, atom->position + atom->length);
+        }
+        prevAtom = atom;
+      }
+
+      // callback(atomPtr, startPos, length);
+    }
+  }
+  fclose(fp);
 }

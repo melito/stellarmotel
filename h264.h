@@ -10,19 +10,20 @@ int chunkIsAtom(char *x);
 unsigned int to_host(unsigned char *p);
 
 /* Callback fired when parsing a file */
-typedef void (found_atom_callback_t) (char *type, unsigned int post, unsigned int length);
+typedef void(found_atom_callback_t)(char *type, unsigned int post,
+                                    unsigned int length);
 
 /* Parse an MP4 file */
 void parse_file(FILE *fp, found_atom_callback_t *callback);
 
-
 /* Tree structure for mapping out an MP4 container */
 typedef struct MP4Atom {
-
-	char type[4];
-	unsigned int pos;
-	unsigned int length;
-	struct MP4Atom *children;
-	struct MP4Atom *siblings;
+  char type[5];
+  unsigned int position;
+  unsigned int length;
+  struct MP4Atom *children;
+  struct MP4Atom *siblings;
 
 } MP4Atom_t;
+
+typedef struct MP4Container { struct MP4Atom *atoms; } MP4Container_t;
