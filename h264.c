@@ -7,12 +7,12 @@
 #define ARRAY_SIZE(x) (sizeof((x)) / sizeof((x)[0]))
 #endif
 
-const char *atomTypes[42] = {
-    "ftyp", "wide", "free", "mdat", "moov", "moof", "mvhd", "trak", "tkhd",
-    "edts", "elst", "mdia", "mdhd", "hdlr", "minf", "vmhd", "dinf", "dref",
-    "url ", "stbl", "stsd", "avc1", "avcC", "colr", "stts", "ctts", "stss",
-    "sdtp", "stsc", "stsz", "stco", "mvex", "trex", "mfhd", "traf", "tfhd",
-    "trun", "utda", "meta", "ilst", "data", "©too"};
+const char *atomTypes[43] = {
+    "ftyp", "wide", "free", "mdat", "moov", "moof",    "mvhd", "trak", "tkhd",
+    "edts", "elst", "mdia", "mdhd", "hdlr", "minf",    "vmhd", "dinf", "dref",
+    "url ", "stbl", "stsd", "avc1", "avcC", "colr",    "stts", "ctts", "stss",
+    "sdtp", "stsc", "stsz", "stco", "mvex", "trex",    "mfhd", "traf", "tfhd",
+    "trun", "utda", "meta", "ilst", "data", "\xa9too", "udta"};
 
 int chunkIsAtom(char *x) {
   for (int i = 0; i < sizeof(atomTypes) / sizeof(atomTypes[0]); i++) {
@@ -36,12 +36,12 @@ int is_child(MP4Atom_t *a, MP4Atom_t *b) {
   return 0;
 }
 
-MP4Atom_t *atom read_atom_from(char *atomPtr, FILE *fp) {
+MP4Atom_t *read_atom_from(char *atomPtr, FILE *fp, int fpPos) {
   MP4Atom_t *atom;
   atom = (MP4Atom_t *)malloc(sizeof(MP4Atom_t));
 
   atomPtr[4] = 0;
-  int startPos = x - 8; // 4 bytes for identifier and 4 bytes for length
+  int startPos = fpPos - 8; // 4 bytes for identifier and 4 bytes for length
   fseek(fp, startPos, SEEK_SET);
 
   unsigned char q[4];
@@ -76,20 +76,11 @@ void parse_file(FILE *fp, found_atom_callback_t *callback) {
 
     char *atomPtr = cursor;
     if (chunkIsAtom(atomPtr)) {
-
-      if (prevAtom) {
-
-        int child = 0;
-        child = is_child(prevAtom, atom);
-
-        if (strncmp("ftyp", prevAtom->type, 4) != 0) {
-          printf("Atom %s @ %d of size: %d, ends @ %d\n", atom->type,
-                 atom->position, atom->length, atom->position + atom->length);
-        }
-        prevAtom = atom;
+      MP4Atom_t *atom = read_atom_from(atomPtr, fp, x);
+      if (strncmp("ftyp", prevAtom->type, 4) != 0) {
+        callback(atom);
       }
-
-      // callback(atomPtr, startPos, length);
+      prevAtom = atom;
     }
   }
   fclose(fp);
