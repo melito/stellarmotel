@@ -14,6 +14,7 @@ typedef struct MP4Atom {
   char type[5];
   unsigned int position;
   unsigned int length;
+  struct MP4Container *container;
   struct MP4Atom *parent;
   struct MP4Atom *child;
   struct MP4Atom *sibling;
@@ -39,6 +40,11 @@ void print_atom_tree(MP4Container_t *container);
 void print_children(MP4Atom_t *atom, int depth);
 void print_siblings(MP4Atom_t *atom, int depth);
 void print_atom(MP4Atom_t *atom, int depth);
+
+/* Finds atoms in a container */
+MP4Atom_t *find_atom(char *type, MP4Container_t *container);
+MP4Atom_t *search_siblings(char *type, MP4Atom_t *atom);
+MP4Atom_t *search_children(char *type, MP4Atom_t *atom);
 
 /* Close the mp4 file */
 void close_mp4_container(MP4Container_t *container);

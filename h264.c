@@ -99,13 +99,8 @@ void parse_file(MP4Container_t *container, found_atom_callback_t *callback) {
         }
 
         if (is_sibling(prevAtom, atom)) {
-
-          // printf("%s - %s SIBLING\n", prevAtom->type, atom->type);
           prevAtom->sibling = atom;
-
         } else if (is_child(prevAtom, atom)) {
-
-          // printf("%s - %s CHILD\n", prevAtom->type, atom->type);
           prevAtom->child = atom;
           atom->parent = prevAtom;
         }
@@ -168,6 +163,43 @@ void print_atom(MP4Atom_t *atom, int depth) {
          "Atom %s @ %d of size: %d, ends @ %d\n",
          depth * 3, "", atom->type, atom->position, atom->length,
          atom->position + atom->length);
+}
+
+MP4Atom_t *find_atom(char *type, MP4Container_t *container) {
+  return search_siblings(type, container->root);
+}
+
+MP4Atom_t *search_siblings(char *type, MP4Atom_t *atom) {
+  MP4Atom_t *conductor = NULL;
+  MP4Atom_t *result = NULL;
+  conductor = atom->sibling;
+  while (conductor != NULL) {
+    if (strcmp(type, conductor->type) == 0) {
+      result = conductor;
+      return result;
+    }
+    result = search_children(type, conductor);
+    conductor = conductor->sibling;
+  }
+
+  return result;
+}
+
+MP4Atom_t *search_children(char *type, MP4Atom_t *atom) {
+  MP4Atom_t *conductor = NULL;
+  MP4Atom_t *result = NULL;
+
+  conductor = atom->child;
+  while (conductor != NULL) {
+    if (strcmp(type, conductor->type) == 0) {
+      result = conductor;
+      return result;
+    }
+    result = search_siblings(type, conductor);
+    conductor = conductor->child;
+  }
+
+  return result;
 }
 
 void close_mp4_container(MP4Container_t *c) { fclose(c->file); }
