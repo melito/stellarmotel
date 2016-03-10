@@ -165,8 +165,9 @@ void print_children(MP4Atom_t *atom, int depth) {
 
 void print_atom(MP4Atom_t *atom, int depth) {
   printf("%*s"
-         "%s\n",
-         depth, "", atom->type);
+         "Atom %s @ %d of size: %d, ends @ %d\n",
+         depth * 3, "", atom->type, atom->position, atom->length,
+         atom->position + atom->length);
 }
 
 void close_mp4_container(MP4Container_t *c) { fclose(c->file); }
