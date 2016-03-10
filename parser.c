@@ -23,12 +23,7 @@ int main(int argc, char **argv) {
     return -1;
   }
 
-  FILE *fp;
-  fp = fopen(argv[1], "r");
-  if (fp == NULL) {
-    printf("\nFile not found\n");
-    return -1;
-  }
-
-  parse_file(fp, found_atom);
+  MP4Container_t *container = new_mp4_container(argv[1]);
+  print_atom_tree(container);
+  close_mp4_container(container);
 }

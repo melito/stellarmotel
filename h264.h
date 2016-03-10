@@ -14,15 +14,31 @@ typedef struct MP4Atom {
   char type[5];
   unsigned int position;
   unsigned int length;
-  struct MP4Atom *children;
-  struct MP4Atom *siblings;
+  struct MP4Atom *parent;
+  struct MP4Atom *child;
+  struct MP4Atom *sibling;
 
 } MP4Atom_t;
 
-typedef struct MP4Container { struct MP4Atom *atoms; } MP4Container_t;
+typedef struct MP4Container {
+  FILE *file;
+  struct MP4Atom *root;
+} MP4Container_t;
 
 /* Callback fired when parsing a file */
-typedef void(found_atom_callback_t)(MP4Atom_t *atom);
+typedef void(found_atom_callback_t)(MP4Atom_t *atom, MP4Atom_t *prevAtom);
 
 /* Parse an MP4 file */
-void parse_file(FILE *fp, found_atom_callback_t *callback);
+void parse_file(MP4Container_t *container, found_atom_callback_t *callback);
+
+/* Create an MP4Container_t from a file */
+MP4Container_t *new_mp4_container(char *file);
+
+/* Prints all atoms in container */
+void print_atom_tree(MP4Container_t *container);
+void print_children(MP4Atom_t *atom, int depth);
+void print_siblings(MP4Atom_t *atom, int depth);
+void print_atom(MP4Atom_t *atom, int depth);
+
+/* Close the mp4 file */
+void close_mp4_container(MP4Container_t *container);

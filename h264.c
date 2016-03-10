@@ -27,11 +27,18 @@ unsigned int to_host(unsigned char *p) {
   return (p[0] << 24) + (p[1] << 16) + (p[2] << 8) + p[3];
 };
 
-int is_child(MP4Atom_t *a, MP4Atom_t *b) {
-  if (b->position < a->position + a->length) {
-    if (b->position > a->position) {
-      return 1;
-    }
+int is_sibling(MP4Atom_t *a, MP4Atom_t *b) {
+  if (b->position == a->position + a->length) {
+    return 1;
+  }
+  return 0;
+}
+
+int is_child(MP4Atom_t *parent, MP4Atom_t *child) {
+
+  if ((child->position < parent->position + parent->length) &&
+      child->position > parent->position) {
+    return 1;
   }
   return 0;
 }
@@ -53,20 +60,21 @@ MP4Atom_t *read_atom_from(char *atomPtr, FILE *fp, int fpPos) {
   atom->position = startPos;
   atom->length = length;
 
+  atom->child = NULL;
+  atom->sibling = NULL;
+  atom->parent = NULL;
+
   return atom;
 }
 
-void parse_file(FILE *fp, found_atom_callback_t *callback) {
-
-  MP4Container_t *container;
-  container = (MP4Container_t *)malloc(sizeof(MP4Container_t));
+void parse_file(MP4Container_t *container, found_atom_callback_t *callback) {
 
   int x = 0;
   char buf;
   char cursor[4];
 
-  MP4Atom_t *prevAtom;
-  while (fread(&buf, sizeof(char), 1, fp) > 0) {
+  MP4Atom_t *prevAtom = NULL;
+  while (fread(&buf, sizeof(char), 1, container->file) > 0) {
     x++;
 
     cursor[0] = cursor[1];
@@ -76,12 +84,89 @@ void parse_file(FILE *fp, found_atom_callback_t *callback) {
 
     char *atomPtr = cursor;
     if (chunkIsAtom(atomPtr)) {
-      MP4Atom_t *atom = read_atom_from(atomPtr, fp, x);
-      if (strncmp("ftyp", prevAtom->type, 4) != 0) {
-        callback(atom);
+      MP4Atom_t *atom = read_atom_from(atomPtr, container->file, x);
+
+      // No root?  Set one.
+      if (container->root == NULL) {
+        container->root = atom;
       }
+
+      if (prevAtom != NULL) {
+        if (strncmp("ftyp", prevAtom->type, 4) == 0) {
+          if (is_child(prevAtom, atom)) {
+            continue;
+          }
+        }
+
+        if (is_sibling(prevAtom, atom)) {
+
+          // printf("%s - %s SIBLING\n", prevAtom->type, atom->type);
+          prevAtom->sibling = atom;
+
+        } else if (is_child(prevAtom, atom)) {
+
+          // printf("%s - %s CHILD\n", prevAtom->type, atom->type);
+          prevAtom->child = atom;
+          atom->parent = prevAtom;
+        }
+      }
+
+      // Update previous atom for next loop
       prevAtom = atom;
-    }
+    } // if
+  }   // while
+} // parse_file
+
+void atomFound(MP4Atom_t *atom, MP4Atom_t *prevAtom) {}
+
+MP4Container_t *new_mp4_container(char *file) {
+  MP4Container_t *container;
+  container = (MP4Container_t *)malloc(sizeof(MP4Container_t));
+  container->root = NULL;
+
+  FILE *fp;
+  fp = fopen(file, "r");
+  if (fp == NULL) {
+    printf("%s", file);
+    printf("\nFile not found\n");
+    return NULL;
   }
-  fclose(fp);
+
+  container->file = fp;
+  parse_file(container, atomFound);
+
+  return container;
 }
+
+void print_atom_tree(MP4Container_t *container) {
+  print_atom(container->root, 0);
+  print_siblings(container->root, 0);
+}
+
+void print_siblings(MP4Atom_t *atom, int depth) {
+  MP4Atom_t *conductor = NULL;
+  conductor = atom->sibling;
+  while (conductor != NULL) {
+    print_atom(conductor, depth);
+    print_children(conductor, depth + 1);
+    conductor = conductor->sibling;
+  }
+}
+
+void print_children(MP4Atom_t *atom, int depth) {
+  MP4Atom_t *conductor = NULL;
+  conductor = atom->child;
+  while (conductor != NULL) {
+    print_atom(conductor, depth);
+    print_siblings(conductor, depth + 1);
+    conductor = conductor->child;
+  }
+}
+
+void print_atom(MP4Atom_t *atom, int depth) {
+  printf("%*s"
+         "%s\n",
+         depth, "", atom->type);
+}
+
+void close_mp4_container(MP4Container_t *c) { fclose(c->file); }
