@@ -51,7 +51,7 @@ MP4Atom_t *search_children(char *type, MP4Atom_t *atom);
 /* Gets AAVC info */
 AVCCNalu_t *get_video_info(MP4Container_t *container);
 AVCCNalu_t *parse_AVCC_nalu(MP4Atom_t *atom);
-unsigned char *read_atom_data(MP4Atom_t *atom);
+void read_atom_data(MP4Atom_t *atom, unsigned char *buf);
 
 /* Close the mp4 file */
 void close_mp4_container(MP4Container_t *container);

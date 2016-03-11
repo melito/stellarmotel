@@ -235,35 +235,35 @@ AVCCNalu_t *get_video_info(MP4Container_t *container) {
 AVCCNalu_t *parse_AVCC_nalu(MP4Atom_t *atom) {
   AVCCNalu_t *result = NULL;
 
-  unsigned char *data = read_atom_data(atom);
-  if (data != NULL) {
-    for (int i = 0; i < atom->length; i++) {
-      // printf("%d\n", i);
-      printf("0x%02X ", data[i]);
+  unsigned char data[atom->length];
+  read_atom_data(atom, data);
+  for (int i = 0; i < atom->length; i++) {
+    // printf("%d\n", i);
+    printf("0x%02X ", data[i]);
+    if ((i % 16 == 0)) {
+      printf("\n");
     }
   }
 
   return result;
 }
 
-unsigned char *read_atom_data(MP4Atom_t *atom) {
-  unsigned char *memblock = NULL;
-  unsigned char *result = NULL;
+void read_atom_data(MP4Atom_t *atom, unsigned char *buf) {
+  unsigned char *memblock;
 
   if (atom->container != NULL) {
     int fd = fileno(atom->container->file);
 
     memblock =
         mmap(NULL, atom->container->fileSize, PROT_READ, MAP_SHARED, fd, 0);
-    result = memblock + atom->position;
+    memcpy(buf, memblock + atom->position, atom->length);
 
     if (memblock == MAP_FAILED) {
       printf("mmap failed: %s\n", strerror(errno));
-      return NULL;
     }
-  }
 
-  return result;
+    munmap(memblock, atom->container->fileSize);
+  }
 }
 
 void close_mp4_container(MP4Container_t *c) { fclose(c->file); }
