@@ -2,6 +2,12 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/mman.h>
+#include <errno.h>
+#include <string.h>
+#include <unistd.h>
+#include <math.h>
+#include <sys/stat.h>
 
 #if !defined(ARRAY_SIZE)
 #define ARRAY_SIZE(x) (sizeof((x)) / sizeof((x)[0]))
@@ -86,6 +92,8 @@ void parse_file(MP4Container_t *container, found_atom_callback_t *callback) {
     if (chunkIsAtom(atomPtr)) {
       MP4Atom_t *atom = read_atom_from(atomPtr, container->file, x);
 
+      atom->container = container;
+
       // No root?  Set one.
       if (container->root == NULL) {
         container->root = atom;
@@ -127,7 +135,15 @@ MP4Container_t *new_mp4_container(char *file) {
     return NULL;
   }
 
+  // Add *FILE to container
   container->file = fp;
+
+  // Add file size to container
+  int fd = fileno(fp);
+  struct stat st;
+  fstat(fd, &st);
+  container->fileSize = st.st_size;
+
   parse_file(container, atomFound);
 
   return container;
@@ -197,6 +213,54 @@ MP4Atom_t *search_children(char *type, MP4Atom_t *atom) {
     }
     result = search_siblings(type, conductor);
     conductor = conductor->child;
+  }
+
+  return result;
+}
+
+AVCCNalu_t *get_video_info(MP4Container_t *container) {
+  AVCCNalu_t *result = NULL;
+
+  MP4Atom_t *avccAtom = find_atom("avcC", container);
+  if (avccAtom == NULL) {
+    return result;
+  }
+
+  print_atom(avccAtom, 0);
+  result = parse_AVCC_nalu(avccAtom);
+
+  return result;
+}
+
+AVCCNalu_t *parse_AVCC_nalu(MP4Atom_t *atom) {
+  AVCCNalu_t *result = NULL;
+
+  unsigned char *data = read_atom_data(atom);
+  if (data != NULL) {
+    for (int i = 0; i < atom->length; i++) {
+      // printf("%d\n", i);
+      printf("0x%02X ", data[i]);
+    }
+  }
+
+  return result;
+}
+
+unsigned char *read_atom_data(MP4Atom_t *atom) {
+  unsigned char *memblock = NULL;
+  unsigned char *result = NULL;
+
+  if (atom->container != NULL) {
+    int fd = fileno(atom->container->file);
+
+    memblock =
+        mmap(NULL, atom->container->fileSize, PROT_READ, MAP_SHARED, fd, 0);
+    result = memblock + atom->position;
+
+    if (memblock == MAP_FAILED) {
+      printf("mmap failed: %s\n", strerror(errno));
+      return NULL;
+    }
   }
 
   return result;

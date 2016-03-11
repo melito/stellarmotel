@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include "avcc.h"
 
 /* Array of atom names we care about */
 const char *atomTypes[43];
@@ -23,6 +24,7 @@ typedef struct MP4Atom {
 
 typedef struct MP4Container {
   FILE *file;
+  int fileSize;
   struct MP4Atom *root;
 } MP4Container_t;
 
@@ -45,6 +47,11 @@ void print_atom(MP4Atom_t *atom, int depth);
 MP4Atom_t *find_atom(char *type, MP4Container_t *container);
 MP4Atom_t *search_siblings(char *type, MP4Atom_t *atom);
 MP4Atom_t *search_children(char *type, MP4Atom_t *atom);
+
+/* Gets AAVC info */
+AVCCNalu_t *get_video_info(MP4Container_t *container);
+AVCCNalu_t *parse_AVCC_nalu(MP4Atom_t *atom);
+unsigned char *read_atom_data(MP4Atom_t *atom);
 
 /* Close the mp4 file */
 void close_mp4_container(MP4Container_t *container);

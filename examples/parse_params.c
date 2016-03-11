@@ -19,14 +19,13 @@ int main(int argc, char **argv) {
 
   MP4Container_t *container = new_mp4_container(argv[1]);
 
-  MP4Atom_t *avccAtom = find_atom("avcC", container);
-  if (avccAtom == NULL) {
-    printf("FAILED: Didn't find avcC atom\n");
+  AVCCNalu_t *avc = get_video_info(container);
+  if (avc == NULL) {
+    printf("FAILED: Didn't find the avcC atom\n");
     return -1;
   }
 
-  printf("SUCCESS! Got the avcC atom\n");
-  print_atom(avccAtom, 0);
+  printf("Success!  Gpt the avcC atom");
 
   close_mp4_container(container);
 }
