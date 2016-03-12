@@ -218,37 +218,95 @@ MP4Atom_t *search_children(char *type, MP4Atom_t *atom) {
   return result;
 }
 
-AVCCNalu_t *get_video_info(MP4Container_t *container) {
-  AVCCNalu_t *result = NULL;
+AVCCAtom_t *get_video_info(MP4Container_t *container) {
+  AVCCAtom_t *result = NULL;
 
   MP4Atom_t *avccAtom = find_atom("avcC", container);
   if (avccAtom == NULL) {
     return result;
   }
 
-  print_atom(avccAtom, 0);
   result = parse_AVCC_nalu(avccAtom);
 
   return result;
 }
 
-AVCCNalu_t *parse_AVCC_nalu(MP4Atom_t *atom) {
-  AVCCNalu_t *result = NULL;
+AVCCAtom_t *parse_AVCC_nalu(MP4Atom_t *atom) {
+  AVCCAtom_t *result = NULL;
 
   unsigned char data[atom->length];
-  read_atom_data(atom, data);
-  for (int i = 0; i < atom->length; i++) {
-    // printf("%d\n", i);
-    printf("0x%02X ", data[i]);
-    if ((i % 16 == 0)) {
-      printf("\n");
+  if (read_atom_data(atom, data)) {
+
+    result = (AVCCAtom_t *)malloc(sizeof(AVCCAtom_t));
+    result->position = atom->position;
+    result->length = atom->length;
+
+    result->size = atom->length;
+    result->bytes = malloc(sizeof(data));
+    memcpy(result->bytes, data, sizeof(data));
+
+    uint8_t atomDataIdx = 8;
+    result->version = data[atomDataIdx]; // skip atom size and type
+
+    atomDataIdx += 1;
+    result->profile = data[atomDataIdx];
+
+    atomDataIdx += 1;
+    result->compatibility = data[atomDataIdx];
+
+    atomDataIdx += 1;
+    result->level = data[atomDataIdx];
+
+    atomDataIdx += 1;
+    result->reserved = data[atomDataIdx];
+    result->nalu_length_minus_one = data[atomDataIdx] & ((1 << 2) - 1);
+
+    result->reserved_after_length_minus_one = data[atomDataIdx++];
+    result->number_of_sps_nalus = data[atomDataIdx];
+
+    printf("idx before parse: %d\n", atomDataIdx);
+    // Get the SPS, yo
+    for (size_t i = 0; i < result->number_of_sps_nalus; i++) {
+
+      SPS_t *sps = (SPS_t *)malloc(sizeof(SPS_t));
+
+      atomDataIdx += 2;
+      sps->size = data[atomDataIdx];
+
+      int byteOffset = atomDataIdx;
+      sps->bytes = malloc(sps->size);
+      memcpy(sps->bytes, data + byteOffset, sps->size);
+
+      atomDataIdx += sps->size;
+      printf("idx after parse: %d", atomDataIdx);
+
+      result->sps_array[i] = sps;
     }
+
+    atomDataIdx += 1;
+    result->number_of_pps_nalus = data[atomDataIdx];
+    // Get all PPS data
+    for (size_t i = 0; i < result->number_of_pps_nalus; i++) {
+
+      PPS_t *pps = (PPS_t *)malloc(sizeof(PPS_t));
+
+      atomDataIdx += 2;
+      pps->size = data[atomDataIdx];
+
+      int byteOffset = atomDataIdx;
+      pps->bytes = malloc(pps->size);
+      memcpy(pps->bytes, data + byteOffset, pps->size);
+
+      result->pps_array[i] = pps;
+    }
+
+    printf("\n");
   }
 
   return result;
 }
 
-void read_atom_data(MP4Atom_t *atom, unsigned char *buf) {
+int read_atom_data(MP4Atom_t *atom, unsigned char *buf) {
   unsigned char *memblock;
 
   if (atom->container != NULL) {
@@ -260,10 +318,44 @@ void read_atom_data(MP4Atom_t *atom, unsigned char *buf) {
 
     if (memblock == MAP_FAILED) {
       printf("mmap failed: %s\n", strerror(errno));
+      return 0;
     }
 
     munmap(memblock, atom->container->fileSize);
+  } else {
+    return 0;
   }
+
+  return 1;
 }
 
 void close_mp4_container(MP4Container_t *c) { fclose(c->file); }
+
+/////////
+const char *bit_rep[16] = {
+        [0] = "0000",  [1] = "0001",  [2] = "0010",  [3] = "0011",
+        [4] = "0100",  [5] = "0101",  [6] = "0110",  [7] = "0111",
+        [8] = "1000",  [9] = "1001",  [10] = "1010", [11] = "1011",
+        [12] = "1100", [13] = "1101", [14] = "1110", [15] = "1111",
+};
+
+void print_byte(uint8_t byte) {
+  printf("%s%s", bit_rep[byte >> 4], bit_rep[byte & 0x0F]);
+}
+
+void print_buffer_data(uint8_t *buf, int length) {
+  /// Print buffer data
+  printf("\n ");
+  for (int i = 0; i < length; i++) {
+    // printf("%d\n", i);
+    printf("%02X ", buf[i]);
+    if (((i + 1) % 16 == 0)) {
+      printf("\n");
+    }
+
+    if (((i + 1) % 8 == 0)) {
+      printf(" ");
+    }
+  }
+  printf("\n");
+}
