@@ -82,7 +82,6 @@ void parse_file(MP4Container_t *container, found_atom_callback_t *callback) {
   MP4Atom_t *prevAtom = NULL;
   while (fread(&buf, sizeof(char), 1, container->file) > 0) {
     x++;
-    printf("%d\n", x);
 
     cursor[0] = cursor[1];
     cursor[1] = cursor[2];
