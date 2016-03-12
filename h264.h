@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <dispatch/dispatch.h>
 #include "avcc.h"
 
 /* Array of atom names we care about */
@@ -24,6 +25,7 @@ typedef struct MP4Atom {
 
 typedef struct MP4Container {
   FILE *file;
+  int file_desc;
   int fileSize;
   struct MP4Atom *root;
 } MP4Container_t;
@@ -55,6 +57,10 @@ int read_atom_data(MP4Atom_t *atom, unsigned char *buf);
 
 /* Close the mp4 file */
 void close_mp4_container(MP4Container_t *container);
+
+// Streaming read
+void mp4_streaming_reader(char *file,
+                          void (^dataRead)(char *data, ssize_t size));
 
 /////////
 void print_byte(uint8_t byte);

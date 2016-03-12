@@ -8,6 +8,8 @@
 #include <unistd.h>
 #include <math.h>
 #include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #if !defined(ARRAY_SIZE)
 #define ARRAY_SIZE(x) (sizeof((x)) / sizeof((x)[0]))
@@ -176,6 +178,46 @@ MP4Container_t *new_mp4_container(char *file) {
   return container;
 }
 
+void mp4_streaming_reader(char *file,
+                          void (^dataRead)(char *data, ssize_t size)) {
+
+  int fd = open(file, O_EVTONLY);
+  if (fd == -1) {
+    printf("Couldn't open file: %s\n", file);
+    exit(-1);
+  }
+  fcntl(fd, F_SETFL, O_NONBLOCK);
+
+  dispatch_queue_t queue =
+      dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
+  dispatch_source_t source =
+      dispatch_source_create(DISPATCH_SOURCE_TYPE_READ, fd, 0, queue);
+
+  if (!source) {
+    close(fd);
+    printf("Couldn't create streaming interface for file: %s\n", file);
+    return;
+  }
+
+  dispatch_source_set_event_handler(source, ^{
+
+    size_t estimated = dispatch_source_get_data(source) + 1;
+
+    char *buf = (char *)malloc(estimated);
+    if (buf) {
+      ssize_t actual = read(fd, buf, estimated);
+      dataRead(buf, actual);
+      free(buf);
+    }
+  });
+
+  dispatch_source_set_cancel_handler(source, ^{
+    close(fd);
+  });
+
+  dispatch_resume(source);
+}
+
 void print_atom_tree(MP4Container_t *container) {
   print_atom(container->root, 0);
   print_siblings(container->root, 0);
@@ -334,7 +376,13 @@ int read_atom_data(MP4Atom_t *atom, unsigned char *buf) {
   unsigned char *memblock;
 
   if (atom->container != NULL) {
-    int fd = fileno(atom->container->file);
+
+    int fd;
+    if (atom->container->file_desc) {
+      fd = atom->container->file_desc;
+    } else {
+      fd = fileno(atom->container->file);
+    }
 
     memblock =
         mmap(NULL, atom->container->fileSize, PROT_READ, MAP_SHARED, fd, 0);
@@ -353,7 +401,11 @@ int read_atom_data(MP4Atom_t *atom, unsigned char *buf) {
   return 1;
 }
 
-void close_mp4_container(MP4Container_t *c) { fclose(c->file); }
+void close_mp4_container(MP4Container_t *c) {
+  if (c->file) {
+    fclose(c->file);
+  }
+}
 
 /////////
 const char *bit_rep[16] = {
