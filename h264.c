@@ -116,6 +116,14 @@ void parse_file(MP4Container_t *container, found_atom_callback_t *callback) {
 
       // Update previous atom for next loop
       prevAtom = atom;
+
+      // Bump the offset if we hit an mdat - There won't be child atoms in there
+      if (strncmp("mdat", atom->type, 4) == 0) {
+        int newOffset = (atom->position + atom->length) - 8;
+        x = newOffset;
+        fseek(container->file, newOffset, SEEK_SET);
+      }
+
     } // if
   }   // while
 } // parse_file
