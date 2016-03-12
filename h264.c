@@ -234,12 +234,12 @@ AVCCAtom_t *get_video_info(MP4Container_t *container) {
     return result;
   }
 
-  result = parse_AVCC_nalu(avccAtom);
+  result = parse_AVCC(avccAtom);
 
   return result;
 }
 
-AVCCAtom_t *parse_AVCC_nalu(MP4Atom_t *atom) {
+AVCCAtom_t *parse_AVCC(MP4Atom_t *atom) {
   AVCCAtom_t *result = NULL;
 
   unsigned char data[atom->length];
@@ -280,7 +280,7 @@ AVCCAtom_t *parse_AVCC_nalu(MP4Atom_t *atom) {
       atomDataIdx += 2;
       sps->size = data[atomDataIdx];
 
-      int byteOffset = atomDataIdx;
+      int byteOffset = atomDataIdx + 1;
       sps->bytes = malloc(sps->size);
       memcpy(sps->bytes, data + byteOffset, sps->size);
 
@@ -298,7 +298,7 @@ AVCCAtom_t *parse_AVCC_nalu(MP4Atom_t *atom) {
       atomDataIdx += 2;
       pps->size = data[atomDataIdx];
 
-      int byteOffset = atomDataIdx;
+      int byteOffset = atomDataIdx + 1;
       pps->bytes = malloc(pps->size);
       memcpy(pps->bytes, data + byteOffset, pps->size);
 
