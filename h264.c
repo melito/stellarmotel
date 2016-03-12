@@ -264,7 +264,6 @@ AVCCAtom_t *parse_AVCC_nalu(MP4Atom_t *atom) {
     result->reserved_after_length_minus_one = data[atomDataIdx++];
     result->number_of_sps_nalus = data[atomDataIdx];
 
-    printf("idx before parse: %d\n", atomDataIdx);
     // Get the SPS, yo
     for (size_t i = 0; i < result->number_of_sps_nalus; i++) {
 
@@ -278,8 +277,6 @@ AVCCAtom_t *parse_AVCC_nalu(MP4Atom_t *atom) {
       memcpy(sps->bytes, data + byteOffset, sps->size);
 
       atomDataIdx += sps->size;
-      printf("idx after parse: %d", atomDataIdx);
-
       result->sps_array[i] = sps;
     }
 
