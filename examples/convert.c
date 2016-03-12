@@ -38,6 +38,10 @@ int main(int argc, char **argv) {
   }
 
   MP4Atom_t *mdat = find_atom("mdat", container);
+  if (mdat == NULL) {
+    printf("FAILED: Could not find mdat\n");
+    return -1;
+  }
 
   int fd = fileno(container->file);
 

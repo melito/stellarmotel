@@ -82,6 +82,7 @@ void parse_file(MP4Container_t *container, found_atom_callback_t *callback) {
   MP4Atom_t *prevAtom = NULL;
   while (fread(&buf, sizeof(char), 1, container->file) > 0) {
     x++;
+    printf("%d\n", x);
 
     cursor[0] = cursor[1];
     cursor[1] = cursor[2];
@@ -93,6 +94,7 @@ void parse_file(MP4Container_t *container, found_atom_callback_t *callback) {
       MP4Atom_t *atom = read_atom_from(atomPtr, container->file, x);
 
       atom->container = container;
+      // printf("%s\n", atom->type);
 
       // No root?  Set one.
       if (container->root == NULL) {
@@ -107,15 +109,28 @@ void parse_file(MP4Container_t *container, found_atom_callback_t *callback) {
         }
 
         if (is_sibling(prevAtom, atom)) {
+
           prevAtom->sibling = atom;
+          if (prevAtom->parent != NULL) {
+            atom->parent = prevAtom->parent;
+          }
+
         } else if (is_child(prevAtom, atom)) {
           prevAtom->child = atom;
           atom->parent = prevAtom;
+
+        } else {
+
+          MP4Atom_t *parentTrace = prevAtom->parent;
+          while (parentTrace != NULL) {
+            if (is_sibling(parentTrace, atom)) {
+              parentTrace->sibling = atom;
+              break;
+            }
+            parentTrace = parentTrace->parent;
+          }
         }
       }
-
-      // Update previous atom for next loop
-      prevAtom = atom;
 
       // Bump the offset if we hit an mdat - There won't be child atoms in there
       if (strncmp("mdat", atom->type, 4) == 0) {
@@ -124,8 +139,13 @@ void parse_file(MP4Container_t *container, found_atom_callback_t *callback) {
         fseek(container->file, newOffset, SEEK_SET);
       }
 
+      prevAtom = atom;
+
     } // if
-  }   // while
+
+    // Update previous atom for next loop
+
+  } // while
 } // parse_file
 
 void atomFound(MP4Atom_t *atom, MP4Atom_t *prevAtom) {}
